@@ -17,12 +17,12 @@
 package vm
 
 import (
-	"hash"
-	"sync/atomic"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/metrics"
+	"hash"
+	"sync/atomic"
 )
 
 // Config are the configuration options for the Interpreter
@@ -265,6 +265,10 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly bool) (
 		// set the last return to the result of the operation.
 		if operation.returns {
 			in.returnData = res
+		}
+
+		if metrics.EnabledExpensive {
+			in.evm.StateDB.IncTotalInstructions()
 		}
 
 		switch {
