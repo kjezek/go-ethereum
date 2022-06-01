@@ -118,6 +118,28 @@ type StateDB struct {
 	SnapshotAccountReads time.Duration
 	SnapshotStorageReads time.Duration
 	SnapshotCommits      time.Duration
+
+	SStoreCount       int64
+	SStoreTime        time.Duration // time consumed by SSTORE calls
+	SLoadCount        int64
+	SLoadTime         time.Duration // time consumed by SLOAD calls
+	TotalInstructions int64         // total amount of executed opcodes
+	EvmTxs            int64         // amount of code-executing transactions
+}
+
+func (s *StateDB) MarkSStore(duration time.Duration) {
+	s.SStoreCount++
+	s.SStoreTime += duration
+}
+func (s *StateDB) MarkSLoad(duration time.Duration) {
+	s.SLoadCount++
+	s.SLoadTime += duration
+}
+func (s *StateDB) IncTotalInstructions() {
+	s.TotalInstructions++
+}
+func (s *StateDB) IncEvmTxs() {
+	s.EvmTxs++
 }
 
 // New creates a new state from a given trie.
