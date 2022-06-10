@@ -62,6 +62,7 @@ func (c *collector) addHistogram(name string, m metrics.Histogram) {
 	pv := []float64{0.5, 0.75, 0.95, 0.99, 0.999, 0.9999}
 	ps := m.Percentiles(pv)
 	c.writeSummaryCounter(name, m.Count())
+	c.writeSumCounter(name, m.Sum())
 	c.buff.WriteString(fmt.Sprintf(typeSummaryTpl, mutateKey(name)))
 	for i := range pv {
 		c.writeSummaryPercentile(name, strconv.FormatFloat(pv[i], 'f', -1, 64), ps[i])
@@ -77,6 +78,7 @@ func (c *collector) addTimer(name string, m metrics.Timer) {
 	pv := []float64{0.5, 0.75, 0.95, 0.99, 0.999, 0.9999}
 	ps := m.Percentiles(pv)
 	c.writeSummaryCounter(name, m.Count())
+	c.writeSumCounter(name, m.Sum())
 	c.buff.WriteString(fmt.Sprintf(typeSummaryTpl, mutateKey(name)))
 	for i := range pv {
 		c.writeSummaryPercentile(name, strconv.FormatFloat(pv[i], 'f', -1, 64), ps[i])
@@ -106,6 +108,12 @@ func (c *collector) writeGaugeCounter(name string, value interface{}) {
 
 func (c *collector) writeSummaryCounter(name string, value interface{}) {
 	name = mutateKey(name + "_count")
+	c.buff.WriteString(fmt.Sprintf(typeCounterTpl, name))
+	c.buff.WriteString(fmt.Sprintf(keyValueTpl, name, value))
+}
+
+func (c *collector) writeSumCounter(name string, value interface{}) {
+	name = mutateKey(name + "_sum")
 	c.buff.WriteString(fmt.Sprintf(typeCounterTpl, name))
 	c.buff.WriteString(fmt.Sprintf(keyValueTpl, name, value))
 }
