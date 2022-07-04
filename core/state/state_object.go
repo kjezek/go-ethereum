@@ -276,6 +276,12 @@ func (s *stateObject) SetState(db Database, key, value common.Hash) {
 	if prev == value {
 		return
 	}
+
+	if s.db.prefetcher != nil && s.data.Root != emptyRoot {
+		slotsToPrefetch := [][]byte{common.CopyBytes(key[:])}
+		s.db.prefetcher.prefetch(s.data.Root, slotsToPrefetch)
+	}
+
 	// New value is different, update and journal the change
 	s.db.journal.append(storageChange{
 		account:  &s.address,
@@ -310,15 +316,8 @@ func (s *stateObject) setState(key, value common.Hash) {
 // finalise moves all dirty storage slots into the pending area to be hashed or
 // committed later. It is invoked at the end of every transaction.
 func (s *stateObject) finalise(prefetch bool) {
-	slotsToPrefetch := make([][]byte, 0, len(s.dirtyStorage))
 	for key, value := range s.dirtyStorage {
 		s.pendingStorage[key] = value
-		if value != s.originStorage[key] {
-			slotsToPrefetch = append(slotsToPrefetch, common.CopyBytes(key[:])) // Copy needed for closure
-		}
-	}
-	if s.db.prefetcher != nil && prefetch && len(slotsToPrefetch) > 0 && s.data.Root != emptyRoot {
-		s.db.prefetcher.prefetch(s.data.Root, slotsToPrefetch)
 	}
 	if len(s.dirtyStorage) > 0 {
 		s.dirtyStorage = make(Storage)
