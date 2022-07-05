@@ -592,6 +592,10 @@ func (s *StateDB) setStateObject(object *stateObject) {
 
 // GetOrNewStateObject retrieves a state object or create a new state object if nil.
 func (s *StateDB) GetOrNewStateObject(addr common.Address) *stateObject {
+	// prefetch the key only when it has not been loaded yet
+	if obj := s.stateObjects[addr]; obj == nil {
+		s.prefetch(s.originalRoot, addr.Bytes())
+	}
 	stateObject := s.getStateObject(addr)
 	if stateObject == nil {
 		stateObject, _ = s.createObject(addr)
@@ -803,7 +807,6 @@ func (s *StateDB) GetRefund() uint64 {
 // the journal as well as the refunds. Finalise, however, will not push any updates
 // into the tries just yet. Only IntermediateRoot or Commit will do that.
 func (s *StateDB) Finalise(deleteEmptyObjects bool) {
-	addressesToPrefetch := make([][]byte, 0, len(s.journal.dirties))
 	for addr := range s.journal.dirties {
 		obj, exist := s.stateObjects[addr]
 		if !exist {
@@ -828,18 +831,10 @@ func (s *StateDB) Finalise(deleteEmptyObjects bool) {
 				delete(s.snapStorage, obj.addrHash)        // Clear out any previously updated storage data (may be recreated via a ressurrect)
 			}
 		} else {
-			obj.finalise(true) // Prefetch slots in the background
+			obj.finalise() // Prefetch slots in the background
 		}
 		s.stateObjectsPending[addr] = struct{}{}
 		s.stateObjectsDirty[addr] = struct{}{}
-
-		// At this point, also ship the address off to the precacher. The precacher
-		// will start loading tries, and when the change is eventually committed,
-		// the commit-phase will be a lot faster
-		addressesToPrefetch = append(addressesToPrefetch, common.CopyBytes(addr[:])) // Copy needed for closure
-	}
-	if s.prefetcher != nil && len(addressesToPrefetch) > 0 {
-		s.prefetcher.prefetch(s.originalRoot, addressesToPrefetch)
 	}
 	// Invalidate journal because reverting across transactions is not allowed.
 	s.clearJournalAndRefund()
@@ -1055,4 +1050,12 @@ func (s *StateDB) AddressInAccessList(addr common.Address) bool {
 // SlotInAccessList returns true if the given (address, slot)-tuple is in the access list.
 func (s *StateDB) SlotInAccessList(addr common.Address, slot common.Hash) (addressPresent bool, slotPresent bool) {
 	return s.accessList.Contains(addr, slot)
+}
+
+// prefetch schedules a batch of trie items to prefetch.
+func (s *StateDB) prefetch(root common.Hash, key []byte) {
+	if s.prefetcher != nil {
+		keysToPrefetch := [][]byte{key}
+		s.prefetcher.prefetch(root, keysToPrefetch)
+	}
 }
