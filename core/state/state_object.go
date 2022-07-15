@@ -222,6 +222,11 @@ func (s *stateObject) GetCommittedState(db Database, key common.Hash) common.Has
 		}()
 	}
 	if s.db.snap != nil {
+		// prefetch only when the Snapshot is used to have the trie ready for the trie update
+		// when the snapshot is disabled, the trie will be fetched directly as part of GetState
+		if s.data.Root != emptyRoot {
+			s.db.prefetch(s.data.Root, key.Bytes())
+		}
 		if metrics.EnabledExpensive {
 			meter = &s.db.SnapshotStorageReads
 		}
