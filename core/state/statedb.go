@@ -1056,3 +1056,13 @@ func (s *StateDB) AddressInAccessList(addr common.Address) bool {
 func (s *StateDB) SlotInAccessList(addr common.Address, slot common.Hash) (addressPresent bool, slotPresent bool) {
 	return s.accessList.Contains(addr, slot)
 }
+
+func (s *StateDB) GetTrieProcTime() time.Duration {
+	return s.SnapshotAccountReads + s.AccountReads + s.AccountUpdates +
+		s.SnapshotStorageReads + s.StorageReads + s.StorageUpdates +
+		s.SnapshotCommits + s.AccountCommits + s.StorageCommits
+}
+
+func (s *StateDB) GetTrieHashTime() time.Duration {
+	return s.AccountHashes + s.StorageHashes
+}

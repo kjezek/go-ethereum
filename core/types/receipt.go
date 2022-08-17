@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"time"
 	"unsafe"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -69,6 +70,8 @@ type Receipt struct {
 	BlockHash        common.Hash `json:"blockHash,omitempty"`
 	BlockNumber      *big.Int    `json:"blockNumber,omitempty"`
 	TransactionIndex uint        `json:"transactionIndex"`
+
+	EvmCalls time.Duration
 }
 
 type receiptMarshaling struct {

@@ -18,8 +18,10 @@ package core
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/metrics"
 	"math"
 	"math/big"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	cmath "github.com/ethereum/go-ethereum/common/math"
@@ -85,6 +87,8 @@ type ExecutionResult struct {
 	UsedGas    uint64 // Total used gas but include the refunded gas
 	Err        error  // Any error encountered during the execution(listed in core/vm/errors.go)
 	ReturnData []byte // Returned data from evm(function result or data supplied with revert opcode)
+
+	evmCalls time.Duration
 }
 
 // Unwrap returns the internal evm error which allows us for further
@@ -311,15 +315,22 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		st.state.PrepareAccessList(msg.From(), msg.To(), vm.ActivePrecompiles(rules), msg.AccessList())
 	}
 	var (
-		ret   []byte
-		vmerr error // vm errors do not effect consensus and are therefore not assigned to err
+		ret      []byte
+		vmerr    error // vm errors do not effect consensus and are therefore not assigned to err
+		evmCalls time.Duration
 	)
 	if contractCreation {
 		ret, _, st.gas, vmerr = st.evm.Create(sender, st.data, st.gas, st.value)
 	} else {
 		// Increment the nonce for the next transaction
 		st.state.SetNonce(msg.From(), st.state.GetNonce(sender.Address())+1)
+		start := time.Now()
+		stateDbStart := st.state.GetTrieProcTime() + st.state.GetTrieHashTime()
 		ret, st.gas, vmerr = st.evm.Call(sender, st.to(), st.data, st.gas, st.value)
+		if metrics.EnabledExpensive {
+			stateDbEnd := st.state.GetTrieProcTime() + st.state.GetTrieHashTime()
+			evmCalls = time.Since(start) - (stateDbEnd - stateDbStart)
+		}
 	}
 
 	if !london {
@@ -339,6 +350,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		UsedGas:    st.gasUsed(),
 		Err:        vmerr,
 		ReturnData: ret,
+		evmCalls:   evmCalls,
 	}, nil
 }
 

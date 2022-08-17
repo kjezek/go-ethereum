@@ -80,6 +80,9 @@ type StateDB interface {
 	MarkSLoad(duration time.Duration)
 	IncTotalInstructions()
 	IncEvmTxs()
+
+	GetTrieProcTime() time.Duration
+	GetTrieHashTime() time.Duration
 }
 
 // CallContext provides a basic interface for the EVM calling conventions. The EVM
