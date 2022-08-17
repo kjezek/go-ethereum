@@ -1063,7 +1063,7 @@ func (s *StateDB) UpdateEvmCallTime(startEvmTime time.Time, startProcTime, start
 	stateDbStart := startProcTime + startHashTime
 	stateDbEnd := s.GetTrieProcTime() + s.GetTrieHashTime()
 	stateDbTime := stateDbEnd - stateDbStart
-	
+
 	s.DbTimeInEvmCall += stateDbTime
 	s.EvmCallTime += time.Since(startEvmTime) - stateDbTime
 }
