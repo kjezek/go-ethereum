@@ -87,8 +87,6 @@ type ExecutionResult struct {
 	UsedGas    uint64 // Total used gas but include the refunded gas
 	Err        error  // Any error encountered during the execution(listed in core/vm/errors.go)
 	ReturnData []byte // Returned data from evm(function result or data supplied with revert opcode)
-
-	evmCalls time.Duration
 }
 
 // Unwrap returns the internal evm error which allows us for further
@@ -315,9 +313,8 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		st.state.PrepareAccessList(msg.From(), msg.To(), vm.ActivePrecompiles(rules), msg.AccessList())
 	}
 	var (
-		ret      []byte
-		vmerr    error // vm errors do not effect consensus and are therefore not assigned to err
-		evmCalls time.Duration
+		ret   []byte
+		vmerr error // vm errors do not effect consensus and are therefore not assigned to err
 	)
 	if contractCreation {
 		ret, _, st.gas, vmerr = st.evm.Create(sender, st.data, st.gas, st.value)
@@ -325,11 +322,11 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		// Increment the nonce for the next transaction
 		st.state.SetNonce(msg.From(), st.state.GetNonce(sender.Address())+1)
 		start := time.Now()
-		stateDbStart := st.state.GetTrieProcTime() + st.state.GetTrieHashTime()
+		stateDbStartProc := st.state.GetTrieProcTime()
+		stateDbStartHash := st.state.GetTrieHashTime()
 		ret, st.gas, vmerr = st.evm.Call(sender, st.to(), st.data, st.gas, st.value)
 		if metrics.EnabledExpensive {
-			stateDbEnd := st.state.GetTrieProcTime() + st.state.GetTrieHashTime()
-			evmCalls = time.Since(start) - (stateDbEnd - stateDbStart)
+			st.state.UpdateEvmCallTime(start, stateDbStartProc, stateDbStartHash)
 		}
 	}
 
@@ -350,7 +347,6 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		UsedGas:    st.gasUsed(),
 		Err:        vmerr,
 		ReturnData: ret,
-		evmCalls:   evmCalls,
 	}, nil
 }
 

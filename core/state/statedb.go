@@ -118,6 +118,7 @@ type StateDB struct {
 	SnapshotAccountReads time.Duration
 	SnapshotStorageReads time.Duration
 	SnapshotCommits      time.Duration
+	EvmCallTime          time.Duration
 
 	SStoreCount       int64
 	SStoreTime        time.Duration // time consumed by SSTORE calls
@@ -1055,6 +1056,13 @@ func (s *StateDB) AddressInAccessList(addr common.Address) bool {
 // SlotInAccessList returns true if the given (address, slot)-tuple is in the access list.
 func (s *StateDB) SlotInAccessList(addr common.Address, slot common.Hash) (addressPresent bool, slotPresent bool) {
 	return s.accessList.Contains(addr, slot)
+}
+
+func (s *StateDB) UpdateEvmCallTime(startEvmTime time.Time, startProcTime, startHashTime time.Duration) {
+	stateDbStart := startProcTime + startHashTime
+	stateDbEnd := s.GetTrieProcTime() + s.GetTrieHashTime()
+
+	s.EvmCallTime += time.Since(startEvmTime) - (stateDbEnd - stateDbStart)
 }
 
 func (s *StateDB) GetTrieProcTime() time.Duration {

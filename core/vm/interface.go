@@ -81,6 +81,7 @@ type StateDB interface {
 	IncTotalInstructions()
 	IncEvmTxs()
 
+	UpdateEvmCallTime(startEvmTime time.Time, startProcTime, startHashTime time.Duration)
 	GetTrieProcTime() time.Duration
 	GetTrieHashTime() time.Duration
 }
