@@ -322,8 +322,11 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		// Increment the nonce for the next transaction
 		st.state.SetNonce(msg.From(), st.state.GetNonce(sender.Address())+1)
 		start := time.Now()
-		stateDbStartProc := st.state.GetTrieProcTime()
-		stateDbStartHash := st.state.GetTrieHashTime()
+		var stateDbStartProc, stateDbStartHash time.Duration
+		if metrics.EnabledExpensive {
+			stateDbStartProc = st.state.GetTrieProcTime()
+			stateDbStartHash = st.state.GetTrieHashTime()
+		}
 		ret, st.gas, vmerr = st.evm.Call(sender, st.to(), st.data, st.gas, st.value)
 		if metrics.EnabledExpensive {
 			st.state.UpdateEvmCallTime(start, stateDbStartProc, stateDbStartHash)
