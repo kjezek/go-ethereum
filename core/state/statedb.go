@@ -118,6 +118,8 @@ type StateDB struct {
 	SnapshotAccountReads time.Duration
 	SnapshotStorageReads time.Duration
 	SnapshotCommits      time.Duration
+	EvmCallTime          time.Duration
+	DbTimeInEvmCall      time.Duration
 
 	SStoreCount       int64
 	SStoreTime        time.Duration // time consumed by SSTORE calls
@@ -1058,4 +1060,23 @@ func (s *StateDB) prefetch(root common.Hash, key []byte) {
 		keysToPrefetch := [][]byte{key}
 		s.prefetcher.prefetch(root, keysToPrefetch)
 	}
+}
+
+func (s *StateDB) UpdateEvmCallTime(startEvmTime time.Time, startProcTime, startHashTime time.Duration) {
+	stateDbStart := startProcTime + startHashTime
+	stateDbEnd := s.GetTrieProcTime() + s.GetTrieHashTime()
+	stateDbTime := stateDbEnd - stateDbStart
+
+	s.DbTimeInEvmCall += stateDbTime
+	s.EvmCallTime += time.Since(startEvmTime) - stateDbTime
+}
+
+func (s *StateDB) GetTrieProcTime() time.Duration {
+	return s.SnapshotAccountReads + s.AccountReads + s.AccountUpdates +
+		s.SnapshotStorageReads + s.StorageReads + s.StorageUpdates +
+		s.SnapshotCommits + s.AccountCommits + s.StorageCommits
+}
+
+func (s *StateDB) GetTrieHashTime() time.Duration {
+	return s.AccountHashes + s.StorageHashes
 }

@@ -18,8 +18,10 @@ package core
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/metrics"
 	"math"
 	"math/big"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	cmath "github.com/ethereum/go-ethereum/common/math"
@@ -319,7 +321,16 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	} else {
 		// Increment the nonce for the next transaction
 		st.state.SetNonce(msg.From(), st.state.GetNonce(sender.Address())+1)
+		start := time.Now()
+		var stateDbStartProc, stateDbStartHash time.Duration
+		if metrics.EnabledExpensive {
+			stateDbStartProc = st.state.GetTrieProcTime()
+			stateDbStartHash = st.state.GetTrieHashTime()
+		}
 		ret, st.gas, vmerr = st.evm.Call(sender, st.to(), st.data, st.gas, st.value)
+		if metrics.EnabledExpensive {
+			st.state.UpdateEvmCallTime(start, stateDbStartProc, stateDbStartHash)
+		}
 	}
 
 	if !london {
